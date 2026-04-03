@@ -13,24 +13,29 @@ function Home() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // --- UPDATED: Using your live Render URL ---
+  const API_BASE_URL = 'https://energymanagement.onrender.com';
+
   const fetchAllData = async () => {
     setLoading(true);
     try {
       const [predRes, statsRes, appRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/predict'),
-        axios.get('http://localhost:5000/api/stats'),
-        axios.get('http://localhost:5000/api/appliances')
+        axios.get(`${API_BASE_URL}/api/predict`),
+        axios.get(`${API_BASE_URL}/api/stats`),
+        axios.get(`${API_BASE_URL}/api/appliances`)
       ]);
       setData(predRes.data);
       setStats(statsRes.data);
       setAppliances(appRes.data);
-    } catch (err) { console.error("Sync Error:", err); }
+    } catch (err) { 
+      console.error("Sync Error:", err); 
+      // Optional: alert("Server is waking up... please wait 30 seconds and try again.");
+    }
     setLoading(false);
   };
 
   useEffect(() => { fetchAllData(); }, []);
 
-  // NEW: Logout Function
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
     navigate('/login');
@@ -86,7 +91,6 @@ function Home() {
               {loading ? "Syncing..." : "Update System"}
             </button>
 
-            {/* NEW: Logout Button */}
             <button 
               onClick={handleLogout} 
               title="Logout"
