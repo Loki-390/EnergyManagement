@@ -14,7 +14,7 @@ const HistoryLogs = () => {
   const fetchHistory = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('http://localhost:5000/api/history');
+      const res = await axios.get('https://energymanagement.onrender.com/api/history');
       setHistory(res.data);
     } catch (err) {
       console.error("Error fetching logs:", err);

@@ -12,7 +12,7 @@ const AddData = () => {
     e.preventDefault();
     setIsSaving(true);
     try {
-      await axios.post('http://localhost:5000/api/add-data', { usage: parseFloat(usage) });
+      await axios.post('https://energymanagement.onrender.com/api/add-data', { usage: parseFloat(usage) });
       alert("Data synchronized with AI model!");
       navigate('/'); // Go back to dashboard to see results
     } catch (err) {
