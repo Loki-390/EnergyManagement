@@ -5,7 +5,14 @@ const { spawn } = require('child_process');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+app.use(cors(
+    {
+  origin: "*", // Allows any website (including your Vercel app) to talk to this server
+  methods: ["GET", "POST"]
+}
+));
+
+
 app.use(express.json());
 
 // --- UPDATED: Cloud MySQL Connection (Aiven) ---

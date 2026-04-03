@@ -13,28 +13,38 @@ function Home() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // --- UPDATED: Using your live Render URL ---
   const API_BASE_URL = 'https://energymanagement.onrender.com';
 
   const fetchAllData = async () => {
     setLoading(true);
     try {
+      // Added a 10-second timeout to prevent infinite loading/crashes
+      const config = { timeout: 10000 };
+
       const [predRes, statsRes, appRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/predict`),
-        axios.get(`${API_BASE_URL}/api/stats`),
-        axios.get(`${API_BASE_URL}/api/appliances`)
+        axios.get(`${API_BASE_URL}/api/predict`, config),
+        axios.get(`${API_BASE_URL}/api/stats`, config),
+        axios.get(`${API_BASE_URL}/api/appliances`, config)
       ]);
-      setData(predRes.data);
-      setStats(statsRes.data);
-      setAppliances(appRes.data);
+
+      // Safety checks: If data is missing, use empty arrays/objects to prevent black screen
+      setData(Array.isArray(predRes.data) ? predRes.data : []);
+      setStats(statsRes.data || { avg_usage: 0, total_usage: 0 });
+      setAppliances(Array.isArray(appRes.data) ? appRes.data : []);
+      
     } catch (err) { 
       console.error("Sync Error:", err); 
-      // Optional: alert("Server is waking up... please wait 30 seconds and try again.");
+      // If server is sleeping or failing, we set empty data instead of letting it crash
+      setData([]);
+      setAppliances([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  useEffect(() => { fetchAllData(); }, []);
+  useEffect(() => { 
+    fetchAllData(); 
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
@@ -107,9 +117,9 @@ function Home() {
 
         {/* Stats Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '30px' }}>
-          <StatCard title="Avg Daily Load" value={`${stats.avg_usage || 0} kWh`} icon={<Activity color="#6366f1" />} color="#eef2ff" />
-          <StatCard title="30-Day Total" value={`${stats.total_usage || 0} kWh`} icon={<BarChart3 color="#10b981" />} color="#ecfdf5" />
-          <StatCard title="System Status" value="AI Optimized" icon={<Zap color="#f59e0b" />} color="#fffbeb" />
+          <StatCard title="Avg Daily Load" value={`${stats?.avg_usage || 0} kWh`} icon={<Activity color="#6366f1" />} color="#eef2ff" />
+          <StatCard title="30-Day Total" value={`${stats?.total_usage || 0} kWh`} icon={<BarChart3 color="#10b981" />} color="#ecfdf5" />
+          <StatCard title="System Status" value={loading ? "Checking..." : "AI Optimized"} icon={<Zap color="#f59e0b" />} color="#fffbeb" />
         </div>
 
         <SmartAlert data={data} loading={loading} />
@@ -120,7 +130,7 @@ function Home() {
             <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '16px', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Activity size={18} /> 7-Day Prediction Forecast
             </h3>
-            <EnergyChart data={data} loading={loading} />
+            <EnergyChart data={data || []} loading={loading} />
           </div>
 
           <div style={{ backgroundColor: '#fff', padding: '25px', borderRadius: '20px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9' }}>
@@ -128,15 +138,21 @@ function Home() {
               <PieIcon size={18} /> Appliance Breakdown (Estimated)
             </h3>
             <div style={{ height: '350px' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={appliances} innerRadius={70} outerRadius={100} paddingAngle={5} dataKey="value">
-                    {appliances.map((entry, index) => <Cell key={index} fill={entry.color} />)}
-                  </Pie>
-                  <Tooltip />
-                  <Legend verticalAlign="bottom" />
-                </PieChart>
-              </ResponsiveContainer>
+              {appliances.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={appliances} innerRadius={70} outerRadius={100} paddingAngle={5} dataKey="value">
+                      {appliances.map((entry, index) => <Cell key={index} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip />
+                    <Legend verticalAlign="bottom" />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#94a3b8' }}>
+                  No breakdown data available
+                </div>
+              )}
             </div>
           </div>
         </div>
