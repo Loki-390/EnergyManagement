@@ -3,12 +3,20 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Home from './pages/Home';
 import AddData from './pages/AddData';
 import HistoryLogs from './pages/HistoryLogs';
-import Login from './pages/Login'; // Make sure you created Login.jsx in src/pages/
+import Login from './pages/Login';
 
-// Protect Route Component
+// --- Improved Protected Route ---
 const ProtectedRoute = ({ children }) => {
+  // Check if user is logged in
   const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-  return isAuthenticated ? children : <Navigate to="/login" />;
+  
+  // If not logged in, send them to /login
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // If logged in, show the page
+  return children;
 };
 
 function App() {
@@ -21,16 +29,33 @@ function App() {
         {/* Protected Routes */}
         <Route 
           path="/" 
-          element={<ProtectedRoute><Home /></ProtectedRoute>} 
+          element={
+            <ProtectedRoute>
+              <Home />
+            </ProtectedRoute>
+          } 
         />
+        
         <Route 
           path="/add" 
-          element={<ProtectedRoute><AddData /></ProtectedRoute>} 
+          element={
+            <ProtectedRoute>
+              <AddData />
+            </ProtectedRoute>
+          } 
         />
+        
         <Route 
           path="/history" 
-          element={<ProtectedRoute><HistoryLogs /></ProtectedRoute>} 
+          element={
+            <ProtectedRoute>
+              <HistoryLogs />
+            </ProtectedRoute>
+          } 
         />
+
+        {/* Fallback: Redirect any unknown URL to Home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
