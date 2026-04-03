@@ -1,0 +1,4 @@
+pandas
+prophet
+flask
+mysql-connector-python

@@ -8,32 +8,58 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// MySQL Connection
+// --- UPDATED: Cloud MySQL Connection (Aiven) ---
 const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: 'password', // <--- Ensure this is your actual MySQL password
-    database: 'smart_energy'
+    host: 'mysql-34abcb77-energymanagement.d.aivencloud.com',
+    port: 28128,
+    user: 'avnadmin',
+    password: 'AVNS_amL3e4HxiUDcC5xorbI', // <--- PASTE YOUR AIVEN PASSWORD HERE
+    database: 'defaultdb',
+    ssl: {
+        rejectUnauthorized: false // Required for Aiven
+    }
 });
 
 db.connect((err) => {
     if (err) {
-        console.error('MySQL Connection Error:', err);
+        console.error('Cloud MySQL Connection Error:', err);
     } else {
-        console.log('Connected to MySQL Database!');
+        console.log('Connected to Aiven Cloud Database!');
+        
+        // Auto-create table if it doesn't exist in the new cloud DB
+        const createTableQuery = `
+            CREATE TABLE IF NOT EXISTS energy_logs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                power_usage_kwh FLOAT NOT NULL
+            );
+        `;
+        db.query(createTableQuery, (err) => {
+            if (err) console.error("Error creating table:", err);
+        });
     }
 });
 
-// 1. Prediction Route (GET)
+// 1. Prediction Route (GET) - UPDATED FOR LINUX/RENDER
 app.get('/api/predict', (req, res) => {
-    const pythonPath = '../ai_engine/venv/Scripts/python.exe';
-    const scriptPath = '../ai_engine/predict.py';
-    const pythonProcess = spawn(pythonPath, [scriptPath]);
+    // On Render (Linux), we use 'python3'. Locally on Windows, you used the venv path.
+    // 'python3' is the standard command on Render/Linux servers.
+    const pythonCommand = process.env.NODE_ENV === 'production' ? 'python3' : 'python';
+    const scriptPath = '../ai_engine/predict.py'; 
+    
+    const pythonProcess = spawn(pythonCommand, [scriptPath]);
+    
     let pythonData = "";
     pythonProcess.stdout.on('data', (data) => { pythonData += data.toString(); });
+    pythonProcess.stderr.on('data', (data) => { console.error(`Python Error: ${data}`); });
+
     pythonProcess.on('close', (code) => {
-        try { res.json(JSON.parse(pythonData)); } 
-        catch (e) { res.status(500).json({ error: "AI Error", raw: pythonData }); }
+        try { 
+            res.json(JSON.parse(pythonData)); 
+        } 
+        catch (e) { 
+            res.status(500).json({ error: "AI Error", raw: pythonData }); 
+        }
     });
 });
 
@@ -61,11 +87,11 @@ app.get('/api/stats', (req, res) => {
     const query = `SELECT ROUND(AVG(power_usage_kwh), 2) as avg_usage, ROUND(SUM(power_usage_kwh), 2) as total_usage FROM energy_logs WHERE timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY)`;
     db.query(query, (err, results) => {
         if (err) return res.status(500).json({ error: "Stats error" });
-        res.json(results[0]);
+        res.json(results[0] || { avg_usage: 0, total_usage: 0 });
     });
 });
 
-// 5. Appliance Decomposition Route (GET) - NEW
+// 5. Appliance Decomposition Route (GET)
 app.get('/api/appliances', (req, res) => {
     const query = "SELECT SUM(power_usage_kwh) as total FROM energy_logs WHERE timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
     db.query(query, (err, results) => {
@@ -82,5 +108,8 @@ app.get('/api/appliances', (req, res) => {
     });
 });
 
-const PORT = 5000;
-app.listen(PORT, () => { console.log(`Server running on http://localhost:${PORT}`); });
+// --- UPDATED: Dynamic Port for Render ---
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => { 
+    console.log(`Server running on port ${PORT}`); 
+});
